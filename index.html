@@ -34,7 +34,6 @@
             transition: all 0.2s ease;
         }
 
-        /* header */
         .header {
             display: flex;
             align-items: center;
@@ -70,7 +69,6 @@
             box-shadow: inset 0 0 0 1px #ffd9c6;
         }
 
-        /* 孕周 + 日期双行 */
         .week-wrapper {
             background: #fcf3ed;
             border-radius: 60px;
@@ -98,7 +96,6 @@
             padding: 2px 16px;
         }
 
-        /* 喝水 */
         .water-tracker {
             background: #e2f4f0;
             border-radius: 48px;
@@ -179,7 +176,6 @@
             border: 1px solid #b7d9d0;
         }
 
-        /* 卡片网格 */
         .grid {
             display: flex;
             flex-direction: column;
@@ -238,7 +234,6 @@
             font-weight: 500;
         }
 
-        /* 互动填写区：点菜、想去哪、心情 */
         .interact-block {
             background: #fcf5ef;
             border-radius: 40px;
@@ -303,7 +298,6 @@
             white-space: nowrap;
         }
 
-        /* 孕吐 */
         .nausea-grid {
             display: flex;
             flex-wrap: wrap;
@@ -367,7 +361,7 @@
         <div class="date-badge" id="dateBadge">📅 2026.08.11</div>
     </div>
 
-    <!-- 孕周 + 预产期 小标签 -->
+    <!-- 孕周 + 预产期 小标签 (自动更新) -->
     <div class="week-wrapper">
         <span class="week-badge" id="weekBadge">🤰 14周+4天</span>
         <span class="due-tag">📆 预产期 2027.2.5</span>
@@ -393,7 +387,7 @@
     <!-- ===== 卡片区 ===== -->
     <div class="grid">
 
-        <!-- 安全小叮咛 (不变) -->
+        <!-- 安全小叮咛 -->
         <div class="card">
             <div class="card-title"><span>🛡️</span> 安全小叮咛</div>
             <div class="card-content">
@@ -407,7 +401,7 @@
             </div>
         </div>
 
-        <!-- 适宜食物 (保留) + 新增点菜区 -->
+        <!-- 适宜食物 + 今日点菜 (每日自动清空) -->
         <div class="card">
             <div class="card-title"><span>🍎</span> 适宜食物 · 营养加分</div>
             <div class="card-content">
@@ -421,7 +415,7 @@
                 <div style="margin-top: 10px; background: #f2e6df; border-radius: 40px; padding: 6px 16px; display: inline-block; font-weight: 500;">
                     🥗 少食多餐，口味清淡更舒服
                 </div>
-                <!-- 今日点菜 新模块 -->
+                <!-- 今日点菜 (每日清空) -->
                 <div class="interact-block" style="margin-top: 16px;">
                     <div class="interact-row" style="border-bottom: none; padding-bottom: 0; margin-bottom: 0;">
                         <label>📝 今日点菜</label>
@@ -432,7 +426,7 @@
             </div>
         </div>
 
-        <!-- 孕吐缓解 (保留) -->
+        <!-- 孕吐缓解 -->
         <div class="card">
             <div class="card-title"><span>🍋</span> 缓解孕吐 · 小妙招</div>
             <div class="card-content">
@@ -452,7 +446,7 @@
             </div>
         </div>
 
-        <!-- 给妈妈的话 + 今日想去哪 + 今日心情 -->
+        <!-- 给妈妈的话 + 这周想去哪 (每日清空) + 今日心情 (保留) -->
         <div class="card" style="background: #faf0eb;">
             <div class="card-title"><span>🧸</span> 给妈妈的话</div>
             <div class="card-content" style="font-size: 17px;">
@@ -465,7 +459,7 @@
                 </p>
             </div>
 
-            <!-- 今日想去哪 + 今日心情 (合并到卡片底部) -->
+            <!-- 这周想去哪 (每日清空) + 今日心情 (保留) -->
             <div class="interact-block" style="margin-top: 14px; background: #f8ede7;">
                 <div class="interact-row">
                     <label>📍 这周想去哪里玩！</label>
@@ -498,7 +492,64 @@
 
 <script>
     (function() {
-        // ---------- 喝水 ----------
+        // ---------- 工具：获取今天的日期字符串 (YYYY-MM-DD) ----------
+        function getTodayStr() {
+            const d = new Date();
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // ---------- 孕周自动计算 (基于末次月经 2026-04-30) ----------
+        function updatePregnancyWeek() {
+            const dueDate = new Date(2027, 1, 5); // 2027-02-05 (月份0-based)
+            const lmp = new Date(dueDate);
+            lmp.setDate(lmp.getDate() - 280); // 末次月经 ≈ 2026-04-30
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            lmp.setHours(0, 0, 0, 0);
+
+            const diffDays = Math.floor((today - lmp) / (1000 * 60 * 60 * 24));
+            if (diffDays < 0) {
+                document.getElementById('weekBadge').textContent = '🤰 孕周计算中';
+                return;
+            }
+            const weeks = Math.floor(diffDays / 7);
+            const days = diffDays % 7;
+            document.getElementById('weekBadge').textContent = `🤰 ${weeks}周+${days}天`;
+        }
+
+        // ---------- 每日自动清空：点菜 & 想去哪 (基于日期) ----------
+        function clearDailyFieldsIfNeeded() {
+            const today = getTodayStr();
+            const lastDate = localStorage.getItem('warmDailyDate');
+            // 如果日期不存在或不是今天，则清空
+            if (lastDate !== today) {
+                // 清空点菜
+                const foodInput = document.getElementById('foodWish');
+                if (foodInput) {
+                    foodInput.value = '';
+                    localStorage.removeItem('warmFoodWish');
+                }
+                // 清空想去哪
+                const placeInput = document.getElementById('placeWish');
+                if (placeInput) {
+                    placeInput.value = '';
+                    localStorage.removeItem('warmPlaceWish');
+                }
+                // 更新日期标记
+                localStorage.setItem('warmDailyDate', today);
+                // 刷新提示
+                const foodHint = document.getElementById('foodSaveHint');
+                if (foodHint) foodHint.textContent = '✨ 已保存';
+                const placeHint = document.getElementById('placeSaveHint');
+                if (placeHint) placeHint.textContent = '✨';
+            }
+        }
+
+        // ---------- 喝水计数器 ----------
         const waterDisplay = document.getElementById('waterDisplay');
         const addBtn = document.getElementById('addWaterBtn');
         const resetBtn = document.getElementById('resetWaterBtn');
@@ -541,7 +592,7 @@
         resetBtn.addEventListener('click', resetWater);
         updateWaterDisplay();
 
-        // ---------- 日期 & 孕周 (固定示例 2026-08-11 为 14周+4天) ----------
+        // ---------- 日期显示 ----------
         const dateBadge = document.getElementById('dateBadge');
         if (dateBadge) {
             const now = new Date();
@@ -552,18 +603,12 @@
             const weekday = weekdays[now.getDay()];
             dateBadge.textContent = `📅 ${year}.${month}.${day} 周${weekday}`;
         }
-        // 孕周固定显示 14周+4天 (可随实际调整，这里保留静态但可修改)
-        const weekBadge = document.getElementById('weekBadge');
-        if (weekBadge) {
-            // 也可以根据日期动态计算，但为了演示保留固定文案，加上小彩蛋：双击可手动改
-            weekBadge.textContent = '🤰 14周+4天';
-            weekBadge.addEventListener('dblclick', function() {
-                const newVal = prompt('修改孕周显示 (例如 15周+2天)：', this.textContent.replace('🤰 ',''));
-                if (newVal !== null && newVal.trim() !== '') {
-                    this.textContent = '🤰 ' + newVal.trim();
-                }
-            });
-        }
+
+        // ---------- 初始化孕周 ----------
+        updatePregnancyWeek();
+
+        // ---------- 每日清空 + 加载存储 ----------
+        clearDailyFieldsIfNeeded();
 
         // ---------- 本地存储：点菜、想去哪、心情 ----------
         const foodInput = document.getElementById('foodWish');
@@ -573,7 +618,7 @@
         const placeHint = document.getElementById('placeSaveHint');
         const moodHint = document.getElementById('moodSaveHint');
 
-        // 加载存储
+        // 加载存储 (点菜和想去哪已经过清空逻辑，但若今天有值则加载)
         try {
             const savedFood = localStorage.getItem('warmFoodWish');
             if (savedFood) foodInput.value = savedFood;
@@ -605,14 +650,14 @@
         placeInput.addEventListener('blur', savePlace);
         moodSelect.addEventListener('change', saveMood);
 
-        // 手动触发一次保存初始值
+        // 手动触发保存初始值
         setTimeout(() => {
             saveFood();
             savePlace();
             saveMood();
         }, 100);
 
-        // ---------- 双击卡片彩蛋 (保留) ----------
+        // ---------- 双击卡片彩蛋 ----------
         const cards = document.querySelectorAll('.card');
         cards.forEach(card => {
             card.addEventListener('dblclick', function(e) {
@@ -627,7 +672,7 @@
             });
         });
 
-        console.log('💛 孕期小暖站 · 新增点菜/想去哪/心情模块');
+        console.log('💛 孕期小暖站 · 孕周自动更新 + 每日点菜/想去哪自动清空');
     })();
 </script>
 
